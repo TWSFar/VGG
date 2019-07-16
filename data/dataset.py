@@ -4,7 +4,7 @@ from PIL import Image
 import numpy as np
 import cv2
 import torch
-from transforms import *
+from .transforms import *
 from torch.utils import data
 
 
@@ -26,10 +26,20 @@ class DogCat(data.Dataset):
         img = np.ascontiguousarray(img, dtype=np.float32)
         img = normalize(img)
         img = torch.from_numpy(img).float()
-        label = 1 if 'dog' in img_path.split('/')[-1] else 0
-        
-        return img, label
+        label = np.array(1 if 'dog' in img_path.split('/')[-1] else 0)
 
+        label_out = torch.zeros((1, 2))
+        label_out[0, 1] = torch.from_numpy(label)
+        return (img, label_out)
+
+
+    @staticmethod
+    def collate_fn(batch):
+        img, label = list(zip(*batch))  # transposed
+        for i, l in enumerate(label):
+            l[:, 0] = i  # add target image index for build_targets()
+        return torch.stack(img, 0), torch.cat(label, 0), hw, path
+    
 
     def __len__(self):
         return len(self.img_files)
@@ -42,9 +52,9 @@ def show_image(img):
     plt.show()
 
 
-''' 
+'''
 dataset = DogCat('datasets/DogCat')
 
 for img, label in dataset:
     print(img.size(), label)
- '''
+'''

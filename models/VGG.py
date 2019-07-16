@@ -1,7 +1,7 @@
 import cv2
 import torch
 from torch import nn
-from parse_config import *
+from .parse_config import *
 from collections import OrderedDict
 
 
@@ -58,7 +58,7 @@ class VGG(nn.Module):
         self.module_defs[0]['height'] = img_size
         self.module_list = create_modules(self.module_defs)
         self.fc = nn.Sequential(
-            nn.Linear(512*8*8, 4096),
+            nn.Linear(512*6*6, 4096),
             nn.LeakyReLU(0.1, inplace=True),
             nn.Dropout(),
             nn.Linear(4096, 4096),
@@ -80,6 +80,7 @@ if __name__ == "__main__":
     # img = cv2.imread("data/001.jpg")
     # height, width, channels = img.shape()
     # imgs = torch.from_numpy(img).permute(2, 0, 1)     
-    input = torch.autograd.Variable(torch.randn(3, 3, 224, 224))
+    input = torch.autograd.Variable(torch.randn(5, 3, 224, 224))
     res = model(input)
     print(res)
+    model.apply(weights_init)
