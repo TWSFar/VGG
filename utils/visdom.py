@@ -26,7 +26,7 @@ class Visualizer(object):
         self.vis.line(Y=np.array([y]), X=np.array([x]),
                     win=(name),
                     opts=dict(title=name),
-                    update=None if x ==0 else 'append',
+                    update=None if x == 0 else 'append',
                     **kwargs)
         self.index[name] = x + 1
     

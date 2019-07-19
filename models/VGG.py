@@ -70,7 +70,7 @@ class VGG(nn.Module):
     def forward(self, x):
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             x = module(x)
-        x = x.view(x.size(0), 1, -1)
+        x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
 
@@ -83,4 +83,3 @@ if __name__ == "__main__":
     input = torch.autograd.Variable(torch.randn(5, 3, 224, 224))
     res = model(input)
     print(res)
-    model.apply(weights_init)

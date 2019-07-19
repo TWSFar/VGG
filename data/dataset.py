@@ -38,7 +38,7 @@ class DogCat(data.Dataset):
         img, label = list(zip(*batch))  # transposed
         for i, l in enumerate(label):
             l[:, 0] = i  # add target image index for build_targets()
-        return torch.stack(img, 0), torch.cat(label, 0), hw, path
+        return torch.stack(img, 0), torch.cat(label, 0).long()
     
 
     def __len__(self):

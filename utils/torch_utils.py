@@ -5,7 +5,7 @@ def select_device(force_cpu=False):
     device = torch.device('cuda:0' if cuda else 'cpu')
 
     if not cuda:
-        print('Using CPU')
+        print('Using CPU\n')
     if cuda:
         c = 1024 ** 2
         ng = torch.cuda.device_count()
@@ -13,6 +13,7 @@ def select_device(force_cpu=False):
         for i in range(ng+1):
             print('Using CUDA device0 _CudaDeviceProperties(name={}, total_memory={}MB'.\
                     format(x[i].name, round(x[i].total_memory/c)))
+        print('')
     return device
 
 
