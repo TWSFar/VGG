@@ -210,4 +210,6 @@ if __name__ == "__main__":
         print(key, '=', value)
     print('')
 
+    with open('result.txt', 'a') as file:
+            file.write(('\n%8s%12s'+'%11s'*2 + '%10s' * 2 + '\n') % ('epoch', 'batch_i', 'train_loss', 'time', 'correct', 'test_loss'))
     train()
