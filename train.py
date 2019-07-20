@@ -178,7 +178,7 @@ def train(
             
             backup = False
             if backup and epoch > 0 and epoch % 10 ==0:
-                torch.save(chkpt, osp(weight, 'backuo%g.pt' % epoch))
+                torch.save(chkpt, osp(opt.save_folder, 'backuo%g.pt' % epoch))
             # Delete checkpoint   
             del chkpt
 
