@@ -4,6 +4,7 @@ import time
 import random
 import os
 import os.path as osp
+import test
 
 from models import *
 from data import *
@@ -15,14 +16,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-hyp = {'giou': .035,  # giou loss gain
-       'xy': 0.20,  # xy loss gain
-       'wh': 0.10,  # wh loss gain
-       'cls': 0.035,  # cls loss gain
-       'conf': 1.61,  # conf loss gain
-       'conf_bpw': 3.53,  # conf BCELoss positive_weight
-       'iou_t': 0.29,  # iou target-anchor training threshold
-       'lr0': 0.001,  # initial learning rate
+hyp = {'lr0': 0.001,  # initial learning rate
        'lr_gamma': 0.1, # learning decay factory
        'lrf': -4.,  # final learning rate = lr0 * (10 ** lrf)
        'momentum': 0.90,  # SGD momentum
@@ -40,7 +34,7 @@ def train(
     cutoff = 10 # freeze backbone endpoint
     best = osp.join(opt.save_folder, 'best.pt')
     latest = osp.join(opt.save_folder, 'latest.pt')
-
+    best_loss = float('inf')
 
 
     #visualization
@@ -52,7 +46,7 @@ def train(
         epoch_plot = create_vis_plot(vis, 'Epoch', 'Loss', vis_title, vis_legend)
     
     # dataset load
-    dataset = DogCat(opt.dataset_path, opt.img_size, mode)
+    dataset = DogCat(opt.trainset_path, opt.img_size, mode)
     dataloader = DataLoader(
                             dataset,
                             batch_size=opt.batch_size,
@@ -62,10 +56,9 @@ def train(
                             collate_fn=dataset.collate_fn
                             )
 
-    # model and optimizer create , init and load checkpoint    
+    # model and optimizer create , init, load checkpoint   
     model = VGG(opt.cfg, opt.img_size).to(device)
     optimizer = optim.SGD(model.parameters(), lr=hyp['lr0'], momentum=hyp['momentum'], weight_decay=hyp['weight_decay'])
-    criterion = nn.CrossEntropyLoss().to(device)
     model_changed = False
     if opt.resume:
         chkpt = torch.load(latest)
@@ -86,6 +79,9 @@ def train(
     scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[round(opt.epochs * x) for x in (0.8, 0.9)], gamma=hyp['lr_gamma']) 
     scheduler.last_epoch = start_epoch - 1
 
+    # Loss
+    criterion = nn.CrossEntropyLoss().to(device)
+    
     # train
     model.hyp = hyp
     batch_id = 0
@@ -112,7 +108,7 @@ def train(
             c_loss = 0
             batch_id += 1
 
-        for i, (imgs, label) in enumerate(dataloader):
+        for i, (imgs, label, file_) in enumerate(dataloader):
             imgs = imgs.to(device)
             label = label.to(device)
             start_time = time.time()
@@ -156,16 +152,14 @@ def train(
 
             print(summary)
         
-
-        '''
         if not opt.notest or epoch == opt.epochs - 1:
             with torch.no_grad():
-                results = test.test(opt, model=model) # P, R, F1, test_loss
+                result = test.test(opt=opt, model=model, mode='test') # P, R, F1, test_loss
             
         with open('result.txt', 'a') as file:
-            file.write(s + '%10.3g' * 4 % results + '\n') 
+            file.write(summary + '%10.3g' * 2 % result + '\n') 
 
-        test_loss = result[2]
+        test_loss = result[1]
         if test_loss < best_loss:
             best_loss = test_loss
         
@@ -184,9 +178,10 @@ def train(
             
             backup = False
             if backup and epoch > 0 and epoch % 10 ==0:
-                torch.save(chkpt, osp(weight, 'backuo%g.pt' % epoch)
+                torch.save(chkpt, osp(weight, 'backuo%g.pt' % epoch))
+            # Delete checkpoint   
             del chkpt
-        '''
+
     total_time = (time.time() - total_time) / 3600
     print("%g epochs completed in %.3f hours.%" % (epoch - start_epoch + 1, total_time))
 
@@ -203,7 +198,8 @@ if __name__ == "__main__":
     parser.add_argument('--notest', action='store_true', help='only test final epoch')
     parser.add_argument('--evolve', action='store_true', help='run hyperparameter evolution')
     parser.add_argument('--number-classes', type=int, default=2, help='number of classes')
-    parser.add_argument('--dataset-path', type=str, default='datasets/DogCat', help='dataset path')
+    parser.add_argument('--trainset_path', type=str, default='datasets/DogCat/train', help='train dataset path')
+    parser.add_argument('--testset_path', type=str, default='datasets/DogCat/test', help='test dataset path')
     parser.add_argument('--save-folder', type=str, default='weights', help='Directory for saving checkpoint models')
     parser.add_argument('--accumulate', type=int, default=1, help='number of batches to accumulate before optimizing')
     parser.add_argument('--visdom', default=False, type=bool, help='Use visdom for loss visualization')

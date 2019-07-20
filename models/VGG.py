@@ -66,12 +66,14 @@ class VGG(nn.Module):
             nn.Dropout(),
             nn.Linear(4096, 2)
         )
+        self.sm = nn.Softmax(dim=1)
 
     def forward(self, x):
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             x = module(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
+        x = self.sm(x)
         return x
 
 
