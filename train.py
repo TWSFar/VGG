@@ -181,7 +181,7 @@ def train(
         save = (not opt.nosave) or (epoch == opt.epochs-1)
         if save:
             if used_gpu:
-                model_save = model.module()
+                model_save = model.module
             # Create checkpoint
             chkpt = {
                 'epoch': epoch,
