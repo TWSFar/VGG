@@ -7,10 +7,10 @@ def res_per_class(stats, total, num_class):
     p, r, f1 = np.zeros(num_class), np.zeros(num_class), np.zeros(num_class)
     for i in range(num_class):
         cur_class = (stats[:, 1] == i)
-        num = sum(cur_class)
-        TP = sum(stats[cur_class, 0] == i).astype(np.float)
+        num = cur_class.sum()
+        TP = (stats[cur_class, 0] == i).sum().astype(np.float)
         FN = (num - TP).astype(np.float)
-        FP = (sum(stats[:, 0] == i) - TP).astype(np.float)
+        FP = ((stats[:, 0] == i).sum() - TP).astype(np.float)
         
         p[i] = TP / (TP + FP + 1e-16)
         r[i] = TP / (TP + FN + 1e-16)
