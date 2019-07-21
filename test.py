@@ -17,14 +17,15 @@ def test(
     classes=['Cat', 'Dog']):
     
     # Configure
-    device = torch_utils.select_device()
+    device, gpu_num = torch_utils.select_device()
     best = osp.join(opt.save_folder, 'best.pt')
     latest = osp.join(opt.save_folder, 'latest.pt')
+    used_gpu = False
 
     # model
     if model is None:
         temp = 'weights/vgg16.pt'
-        model = VGG(opt.cfg, img_size).to(device)
+        model = VGG(opt.cfg, img_size)
         chkpt = torch.load(temp)
         model_dict = model.state_dict()
         pretrained_dict = chkpt['model']
@@ -37,6 +38,17 @@ def test(
         model_dict.update(new_dict)
         model.load_state_dict(model_dict)
         # model.load_state_dict(torch.load(temp)['model']) 
+    
+    # gpu set
+    if opt.gpu > 1 and gpu_num > 1:
+        device_id = []
+        for i in range(min(opt.gpu, gpu_num)):
+            device_id.append(i)
+        model = torch.nn.DataParallel(model, device_ids=device_id)
+        model.to(device) 
+        used_gpu = True
+    else:
+        model.to(device)
     
     # Loss
     criterion = nn.CrossEntropyLoss().to(device)
@@ -105,6 +117,7 @@ if __name__ == "__main__":
     parser.add_argument('--number-classes', type=int, default=2, help='number of classes')
     parser.add_argument('--testset-path', type=str, default='datasets/DogCat/test', help='path of dataset')
     parser.add_argument('--save-folder', type=str, default='weights', help='Directory for saving checkpoint models')
+    parser.add_argument('--gpu', default=4, type=int, help='number of gpu')
     opt = parser.parse_args()
     
     with torch.no_grad():

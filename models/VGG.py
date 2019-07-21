@@ -67,18 +67,19 @@ class VGG(nn.Module):
 
         self.dropout = nn.Dropout()
         self.fc1 = nn.Linear(512*7*7, 4096)
+        self.batch_norm1 = nn.BatchNorm1d(4096)
         self.fc2 = nn.Linear(4096, 4096)
+        self.batch_norm2 = nn.BatchNorm1d(4096)
         self.fc3 = nn.Linear(4096, 2)
-     
 
     def forward(self, x):
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             x = module(x)
         x = x.view(x.size(0), -1)
-        x = self.dropout(F.leaky_relu(self.fc1(x), 0.1))
-        x = self.dropout(F.leaky_relu(self.fc2(x), 0.1))
+        x = self.batch_norm1(F.leaky_relu(self.fc1(x), 0.1))
+        x = self.batch_norm2(F.leaky_relu(self.fc2(x), 0.1))
         x = self.fc3(x)
-        x = F.sigmoid(x)
+        x = F.softmax(x, dim=1)
         return x
 
 

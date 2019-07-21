@@ -11,10 +11,10 @@ def select_device(force_cpu=False):
         ng = torch.cuda.device_count()
         x = [torch.cuda.get_device_properties(i) for i in range(ng)]
         for i in range(ng):
-            print('Using CUDA device0 _CudaDeviceProperties(name={}, total_memory={}MB'.\
-                    format(x[i].name, round(x[i].total_memory/c)))
+            print('Using CUDA device{} _CudaDeviceProperties(name={}, total_memory={}MB'.\
+                    format(i, x[i].name, round(x[i].total_memory/c)))
         print('')
-    return device
+    return device, ng
 
 
 # print(select_device())
