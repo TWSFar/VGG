@@ -1,6 +1,9 @@
 import cv2
+
 import torch
 from torch import nn
+import torch.nn.functional as F
+
 from .parse_config import *
 from collections import OrderedDict
 
@@ -33,8 +36,12 @@ def create_modules(module_defs):
                                                 bias=not bn))
             if bn:
                 modules.add_module('batch_norm_{}'.format(i), nn.BatchNorm2d(filters))
-            if module_def['activation'] == 'leaky':
+            
+        elif module_def['type'] == 'relu':
+            if module_def['activation']:
                 modules.add_module("leaky_{}".format(i), nn.LeakyReLU(0.1, inplace=True))
+            else:
+                modules.add_module('relu_{}'.format(i), nn.ReLU(inplace=True))
 
         elif module_def['type'] == 'maxpooling':
             kernel_size = int(module_def['size'])
@@ -57,28 +64,28 @@ class VGG(nn.Module):
         self.img_size = img_size
         self.module_defs[0]['height'] = img_size
         self.module_list = create_modules(self.module_defs)
-        self.fc = nn.Sequential(
-            nn.Linear(512*6*6, 4096),
-            nn.LeakyReLU(0.1, inplace=True),
-            nn.Dropout(),
-            nn.Linear(4096, 4096),
-            nn.LeakyReLU(0.1, inplace=True),
-            nn.Dropout(),
-            nn.Linear(4096, 2)
-        )
-        self.sm = nn.Softmax(dim=1)
+
+        self.dropout = nn.Dropout()
+        self.fc1 = nn.Linear(512*7*7, 4096)
+        self.fc2 = nn.Linear(4096, 4096)
+        self.fc3 = nn.Linear(4096, 2)
+     
 
     def forward(self, x):
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             x = module(x)
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        x = self.sm(x)
+        x = self.dropout(F.leaky_relu(self.fc1(x), 0.1))
+        x = self.dropout(F.leaky_relu(self.fc2(x), 0.1))
+        x = self.fc3(x)
+        x = F.sigmoid(x)
         return x
 
 
 if __name__ == "__main__":
+    best = 'G:\\CV\\Reading\\VGG\\weights\\best.pt'
     model = VGG("cfg/vgg16.cfg", 224)
+    model.load_state_dict(torch.load(best)['model']) 
     # img = cv2.imread("data/001.jpg")
     # height, width, channels = img.shape()
     # imgs = torch.from_numpy(img).permute(2, 0, 1)     

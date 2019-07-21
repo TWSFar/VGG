@@ -23,9 +23,21 @@ def test(
 
     # model
     if model is None:
+        temp = 'weights/vgg16.pt'
         model = VGG(opt.cfg, img_size).to(device)
-        model.load_state_dict(torch.load(best)['model'])    
-
+        chkpt = torch.load(temp)
+        model_dict = model.state_dict()
+        pretrained_dict = chkpt['model']
+        # new_dict = {}
+        # for k, v in pretrained_dict.items():
+        #     for k2 in model_dict.keys():
+        #         if k in k2 and 'conv' in k2:
+        #             new_dict[k2] = v  
+        new_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys() and 'fc' not in k}
+        model_dict.update(new_dict)
+        model.load_state_dict(model_dict)
+        # model.load_state_dict(torch.load(temp)['model']) 
+    
     # Loss
     criterion = nn.CrossEntropyLoss().to(device)
     
@@ -88,7 +100,7 @@ def test(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='test.py')
     parser.add_argument('--cfg', type=str, default='cfg/vgg16.cfg', help='cfg file path')
-    parser.add_argument('--batch-size', type=int, default=16, help='batch size')
+    parser.add_argument('--batch-size', type=int, default=10, help='batch size')
     parser.add_argument('--img-size', type=int, default=224, help='inference size (pixels)')
     parser.add_argument('--number-classes', type=int, default=2, help='number of classes')
     parser.add_argument('--testset-path', type=str, default='datasets/DogCat/test', help='path of dataset')

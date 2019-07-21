@@ -73,6 +73,8 @@ def train(
             model.load_state_dict(pretrained_dict)
         best_loss = chkpt['best_loss']
         start_epoch = chkpt['epoch'] + 1
+    elif opt.pretrain:
+        model.load_state_dict(torch.load(opt.pretrain_weight)['model'])
     else:
         model.module_list.apply(weights_init)
     
@@ -204,8 +206,10 @@ if __name__ == "__main__":
     parser.add_argument('--testset_path', type=str, default='datasets/DogCat/test', help='test dataset path')
     parser.add_argument('--save-folder', type=str, default='weights', help='Directory for saving checkpoint models')
     parser.add_argument('--accumulate', type=int, default=1, help='number of batches to accumulate before optimizing')
-    parser.add_argument('--visdom', default=True  , type=bool, help='Use visdom for loss visualization')
+    parser.add_argument('--visdom', default=False, type=bool, help='Use visdom for loss visualization')
     parser.add_argument('--num-workers', type=int, default=4, help='number of Pytorch DataLoader workers')
+    parser.add_argument('--pretrain-weight', type=str, default='weights/vgg16.pt', help='pre train weights')
+    parser.add_argument('--pretrain', default=True, type=bool, help='use pre train')
     opt=parser.parse_args()
     optdict = opt.__dict__
     for (key, value) in optdict.items():

@@ -19,6 +19,7 @@ class DogCat(data.Dataset):
     def __getitem__(self, index):
         img_path = self.img_files[index]
         img = cv2.imread(img_path)
+    
         if self.mode == 'train':
             img = letterbox(img, self.img_size, self.mode) # resize image
         else:
@@ -28,7 +29,7 @@ class DogCat(data.Dataset):
         img = img[:, :, ::-1].transpose(2, 0, 1) # BGR to RGB
         img = np.ascontiguousarray(img, dtype=np.float32)
         img = normalize(img)
-        img = torch.from_numpy(img).float()
+        img = torch.from_numpy(img).float() 
         label = np.array(1 if 'dog' in img_path.split('/')[-1] else 0)
 
         label_out = torch.zeros((1, 2))
@@ -55,9 +56,9 @@ def show_image(img):
     plt.show()
 
 
-'''
-dataset = DogCat('datasets/DogCat')
 
-for img, label in dataset:
-    print(img.size(), label)
-'''
+# dataset = DogCat('datasets/DogCat/train')
+
+# for img, label in dataset:
+#     print(img.size(), label)
+
