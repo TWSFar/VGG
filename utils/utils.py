@@ -33,7 +33,7 @@ def compute_loss():
 def create_vis_plot(vis, X_, Y_, title_, legend_):
     return vis.line(
         X=torch.zeros((1,)).cpu(),
-        Y=torch.zeros((1, 1)).cpu(),
+        Y=torch.zeros((1, len(legend_))).cpu(),
         opts=dict(
             xlabel=X_,
             ylabel=Y_,
@@ -43,21 +43,16 @@ def create_vis_plot(vis, X_, Y_, title_, legend_):
     )
 
 
-def update_vis_plot(vis, batch_id, loss, window1, window2, update_type, batch_number=1):
+def update_vis_plot(vis, item, loss, window, update_type):
+    if item == 0:
+        update_type = True
+ 
     vis.line(
-        X = torch.ones((1, 1)).cpu() * batch_id,
-        Y = torch.Tensor([loss]).unsqueeze(0).cpu() / batch_number,
-        win = window1,
+        X = torch.ones((1, len(loss))).cpu() * item,
+        Y = torch.Tensor(loss).unsqueeze(0).cpu(),
+        win = window,
         update = update_type
     )
-    if batch_id == 0:
-        vis.line(
-            X = torch.zeros((1, 1)).cpu(),
-            Y = torch.Tensor([loss]).unsqueeze(0).cpu(),
-            win = Window2,
-            update = True
-        )
-
 
 def model_info(model, report='summary'):
     n_p = sum(x.numel() for x in model.parameters())

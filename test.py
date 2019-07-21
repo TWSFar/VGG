@@ -65,7 +65,7 @@ def test(
         for x, y in zip(predicted.tolist(), labels):
             stats.append((x, y))
 
-    
+    loss = loss / total
     stats = np.array(stats).astype(np.int64)
     num_per_class = np.bincount(stats[:, 1], minlength=opt.number_classes)
 
@@ -82,7 +82,7 @@ def test(
             print(("%10s"+"%10d" + "%10.3g"*3) % (c, num_per_class[i], p[i], r[i], f1[i]))
     print()
 
-    return corrects, loss 
+    return corrects, loss, mf1 
 
 
 if __name__ == "__main__":

@@ -35,16 +35,16 @@ def train(
     best = osp.join(opt.save_folder, 'best.pt')
     latest = osp.join(opt.save_folder, 'latest.pt')
     best_loss = float('inf')
-
+    train_best_loss = float('inf')
 
     #visualization
     if opt.visdom:
         vis = visdom.Visdom()
-        vis_title = 'VGG.Pytorch on DogCat'
-        vis_legend = ['Total Loss']
-        iter_plot = create_vis_plot(vis, 'Iteration', 'Loss', vis_title, vis_legend)
-        epoch_plot = create_vis_plot(vis, 'Epoch', 'Loss', vis_title, vis_legend)
-    
+        vis_legend = ['Loss', 'correct', 'F1']
+        epoch_plot = create_vis_plot(vis, 'Epoch', 'Loss', 'train loss', [vis_legend[0],])
+        batch_plot = create_vis_plot(vis, 'Batch', 'Loss', 'batch loss', [vis_legend[0],])
+        test_plot = create_vis_plot(vis, 'Epoch', 'Loss', 'test loss', vis_legend)
+
     # dataset load
     dataset = DogCat(opt.trainset_path, opt.img_size, mode)
     dataloader = DataLoader(
@@ -84,7 +84,7 @@ def train(
     
     # train
     model.hyp = hyp
-    batch_id = 0
+
     model_info(model)
     batch_number = len(dataloader)
     n_burnin = min(round(batch_number / 5 + 1), 1000)  # burn-in batches
@@ -100,13 +100,6 @@ def train(
             for name, p in model.named_parameters():
                 if int(name.split('.')[1]) < cutoff: 
                     p.requires_grad = False if epoch == 0 else True
-        
-        # visdom
-        if opt.visdom and epoch != 0 and (epoch % batch_number == 0):
-            batch_id += 1
-            update_vis_plot(vis, batch_id, c_loss, iter_plot, None, 'append', batch_number)
-            c_loss = 0
-            batch_id += 1
 
         for i, (imgs, label, file_) in enumerate(dataloader):
             imgs = imgs.to(device)
@@ -132,18 +125,22 @@ def train(
 
             #loss = compute_loss(pred, loss)
             loss = criterion(pred, label[:, 1].view(-1))
-            
+            train_best_loss = min(train_best_loss, loss)
+          
             if torch.isnan(loss):
                 print('WARNING: nan loss detected, ending training')
                 return results
 
             loss.backward()
-
+            
             if (i + 1) % opt.accumulate == 0 or (i + 1) == batch_number:
                 optimizer.step()
                 optimizer.zero_grad()
             end_time = time.time()
-    
+
+            if opt.visdom:
+                update_vis_plot(vis, i, [loss.cpu()], batch_plot, 'append')
+            
             summary = ('%8s%12s'+'%10.3g'*2) % (
                         '%g/%g' % (epoch, opt.epochs), 
                         '%g/%g' % (i, batch_number), 
@@ -155,13 +152,18 @@ def train(
         if not opt.notest or epoch == opt.epochs - 1:
             with torch.no_grad():
                 result = test.test(opt=opt, model=model, mode='test') # P, R, F1, test_loss
-            
+        
         with open('result.txt', 'a') as file:
-            file.write(summary + '%10.3g' * 2 % result + '\n') 
+            file.write(summary + '%10.3g' * 3 % result + '\n') 
 
         test_loss = result[1]
         if test_loss < best_loss:
             best_loss = test_loss
+        
+        # visdom
+        if opt.visdom:
+            update_vis_plot(vis, epoch, [train_best_loss], epoch_plot, 'append')
+            update_vis_plot(vis, epoch, result, test_plot, 'append')
         
         save = (not opt.nosave) or (epoch == opt.epochs-1)
         if save:
@@ -202,7 +204,7 @@ if __name__ == "__main__":
     parser.add_argument('--testset_path', type=str, default='datasets/DogCat/test', help='test dataset path')
     parser.add_argument('--save-folder', type=str, default='weights', help='Directory for saving checkpoint models')
     parser.add_argument('--accumulate', type=int, default=1, help='number of batches to accumulate before optimizing')
-    parser.add_argument('--visdom', default=False, type=bool, help='Use visdom for loss visualization')
+    parser.add_argument('--visdom', default=True  , type=bool, help='Use visdom for loss visualization')
     parser.add_argument('--num-workers', type=int, default=4, help='number of Pytorch DataLoader workers')
     opt=parser.parse_args()
     optdict = opt.__dict__
@@ -211,5 +213,5 @@ if __name__ == "__main__":
     print('')
 
     with open('result.txt', 'a') as file:
-            file.write(('\n%8s%12s'+'%11s'*2 + '%10s' * 2 + '\n') % ('epoch', 'batch_i', 'train_loss', 'time', 'correct', 'test_loss'))
+            file.write(('\n%8s%12s'+'%11s'*2 + '%10s' * 3 + '\n') % ('epoch', 'batch_i', 'train_loss', 'time', 'correct', 'test_loss', 'f1'))
     train()
