@@ -3,7 +3,7 @@ import torch
 def select_device(force_cpu=False):
     cuda = False if force_cpu else torch.cuda.is_available()
     device = torch.device('cuda:0' if cuda else 'cpu')
-
+    ng = 0
     if not cuda:
         print('Using CPU\n')
     if cuda:

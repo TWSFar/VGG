@@ -38,17 +38,16 @@ def test(
         model_dict.update(new_dict)
         model.load_state_dict(model_dict)
         # model.load_state_dict(torch.load(temp)['model']) 
-    
-    # gpu set
-    if opt.gpu > 1 and gpu_num > 1:
-        device_id = []
-        for i in range(min(opt.gpu, gpu_num)):
-            device_id.append(i)
-        model = torch.nn.DataParallel(model, device_ids=device_id)
-        model.to(device) 
-        used_gpu = True
-    else:
-        model.to(device)
+        # gpu set
+        if opt.gpu > 1 and gpu_num > 1:
+            device_id = []
+            for i in range(min(opt.gpu, gpu_num)):
+                device_id.append(i)
+            model = torch.nn.DataParallel(model, device_ids=device_id)
+            model.to(device) 
+            used_gpu = True
+        else:
+            model.to(device)
     
     # Loss
     criterion = nn.CrossEntropyLoss().to(device)
