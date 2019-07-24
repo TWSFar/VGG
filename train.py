@@ -187,8 +187,11 @@ def train(
                 'model': model.module if used_mulgpu else model,
                 'optimizer': optimizer.state_dict()
             }
+            if not osp.exists(opt.save_folder):
+                    os.makedirs(opt.save_folder)
             torch.save(chkpt, latest)
             if best_loss == test_loss:
+                
                 torch.save(chkpt, best)
             
             backup = False
@@ -204,7 +207,7 @@ def train(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='VGG training with Pytorch')
     parser.add_argument('--epochs', type=int, default=200, help='number of epochs')
-    parser.add_argument('--batch-size', type=int, default=1, help='batch size')
+    parser.add_argument('--batch-size', type=int, default=128, help='batch size')
     parser.add_argument('--cfg', type=str, default='cfg/vgg16.cfg', help='cfg file path')
     parser.add_argument('--single-scale', action='store_true', help='train at fixed size')
     parser.add_argument('--img-size', type=int, default=224, help='inference size')
@@ -217,10 +220,10 @@ if __name__ == "__main__":
     parser.add_argument('--testset_path', type=str, default='datasets/DogCat/test', help='test dataset path')
     parser.add_argument('--save-folder', type=str, default='weights', help='Directory for saving checkpoint models')
     parser.add_argument('--accumulate', type=int, default=1, help='number of batches to accumulate before optimizing')
-    parser.add_argument('--visdom', default=False, type=bool, help='Use visdom for loss visualization')
+    parser.add_argument('--visdom', default=True, type=bool, help='Use visdom for loss visualization')
     parser.add_argument('--num-workers', type=int, default=4, help='number of Pytorch DataLoader workers')
     parser.add_argument('--pretrain-weight', type=str, default='weights/vgg16.pt', help='pre train weights')
-    parser.add_argument('--pretrained', default=False, type=bool, help='use pre train')
+    parser.add_argument('--pretrained', default=True, type=bool, help='use pre train')
     parser.add_argument('--gpu', default=4, type=int, help='number of gpu')
     opt=parser.parse_args()
     optdict = opt.__dict__

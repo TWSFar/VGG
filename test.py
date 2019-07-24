@@ -113,7 +113,7 @@ def test(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='test.py')
     parser.add_argument('--cfg', type=str, default='cfg/vgg16.cfg', help='cfg file path')
-    parser.add_argument('--batch-size', type=int, default=10, help='batch size')
+    parser.add_argument('--batch-size', type=int, default=128, help='batch size')
     parser.add_argument('--img-size', type=int, default=224, help='inference size (pixels)')
     parser.add_argument('--number-classes', type=int, default=2, help='number of classes')
     parser.add_argument('--testset-path', type=str, default='datasets/DogCat/test', help='path of dataset')
