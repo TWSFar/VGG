@@ -70,8 +70,10 @@ def train(
     
     # resume
     if opt.resume:
-        model, best_loss, start_epoch, optimizer = resume_load_weights(model, optimizer, latest)
-
+        try:
+            model, best_loss, start_epoch, optimizer = resume_load_weights(model, optimizer, latest)
+        except:
+            print('load checkpoint failure, the file might be corrupted.\n Now, training from epoch 0...')
     # gpu set
     if opt.gpu > 1 and gpu_num > 1:
         device_id = []
@@ -176,7 +178,7 @@ def train(
                 'epoch': epoch,
                 'best_loss': best_loss,
                 'model': model.module.state_dict() if used_mulgpu else model.state_dict(),
-                'optimizer': optimizer.module.state_dict() if used_mulgpu else optimizer.state_dict()
+                'optimizer': None if used_mulgpu else optimizer.state_dict() 
             }
             if not osp.exists(opt.save_folder):
                 os.makedirs(opt.save_folder)
@@ -222,6 +224,7 @@ if __name__ == "__main__":
         print(key, '=', value)
     print('')
 
+    # opt.resume = True
     if opt.resume:
         opt.pretrained = False
     
