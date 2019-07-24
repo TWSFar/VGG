@@ -43,7 +43,7 @@ def train(
     #visualization
     if opt.visdom:
         vis = visdom.Visdom()
-        vis_legend = ['Loss', 'correct', 'F1']
+        vis_legend = ['correct', 'loss', 'F1']
         # epoch_plot = create_vis_plot(vis, 'Epoch', 'Loss', 'train loss', [vis_legend[0],])
         batch_plot = create_vis_plot(vis, 'Batch', 'Loss', 'batch loss', [vis_legend[0],])
         test_plot = create_vis_plot(vis, 'Epoch', 'Loss', 'test loss', vis_legend)
@@ -175,8 +175,8 @@ def train(
             chkpt = {
                 'epoch': epoch,
                 'best_loss': best_loss,
-                'model': model.module if used_mulgpu else model,
-                'optimizer': optimizer.state_dict()
+                'model': model.module.state_dict() if used_mulgpu else model.state_dict(),
+                'optimizer': optimizer.module.state_dict() if used_mulgpu else optimizer.state_dict()
             }
             if not osp.exists(opt.save_folder):
                 os.makedirs(opt.save_folder)
@@ -185,7 +185,7 @@ def train(
                 torch.save(chkpt, best)
             
             backup = False
-            if backup and epoch > 20 and epoch % 10 ==0:
+            if backup and epoch > 0 and epoch % 10 ==0:
                 torch.save(chkpt, osp(opt.save_folder, opt.backbone + 'backup_%g.pt' % epoch))
             # Delete checkpoint   
             del chkpt
@@ -196,10 +196,10 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='VGG training with Pytorch')
-    parser.add_argument('--backbone', type=str, default='vgg', 
+    parser.add_argument('--backbone', type=str, default='resnet', 
                         choices=['resnet', 'vgg'], help='backbone')
-    parser.add_argument('--epochs', type=int, default=200, help='number of epochs')
-    parser.add_argument('--batch-size', type=int, default=16, help='batch size')
+    parser.add_argument('--epochs', type=int, default=20, help='number of epochs')
+    parser.add_argument('--batch-size', type=int, default=128, help='batch size')
     parser.add_argument('--cfg', type=str, default='cfg/vgg16.cfg', help='cfg file path')
     parser.add_argument('--single-scale', action='store_true', help='train at fixed size')
     parser.add_argument('--img-size', type=int, default=224, help='inference size')
@@ -225,6 +225,6 @@ if __name__ == "__main__":
     if opt.resume:
         opt.pretrained = False
     
-    with open('result.txt', 'a') as file:
+    with open(osp.join('result_log', opt.backbone + 'result.txt'), 'a') as file:
             file.write(('\n%8s%12s'+'%11s'*2 + '%10s' * 3 + '\n') % ('epoch', 'batch_i', 'train_loss', 'time', 'correct', 'test_loss', 'f1'))
     train()

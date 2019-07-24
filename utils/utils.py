@@ -4,13 +4,9 @@ import torch.nn.init as init
 import numpy as np
 
 
-def resume_load_weights(model, path):
+def resume_load_weights(model, optimizer, path):
     chkpt = torch.load(path)
-    model_dict = model.state_dict()
-    pretrained_dict = chkpt['model']
-    new_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys()}
-    model_dict.update(new_dict)
-    model.load_state_dict(pretrained_dict)
+    model.load_state_dict(chkpt['model'])
     best_loss = chkpt['best_loss']
     start_epoch = chkpt['epoch'] + 1
     if chkpt['optimizer'] is not None:
