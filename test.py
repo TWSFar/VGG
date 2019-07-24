@@ -22,6 +22,7 @@ def test(
     latest = osp.join(opt.save_folder, 'latest.pt')
     used_gpu = False
 
+    '''
     # model
     if model is None:
         temp = 'weights/vgg16.pt'
@@ -48,6 +49,7 @@ def test(
             used_gpu = True
         else:
             model.to(device)
+    '''
     
     # Loss
     criterion = nn.CrossEntropyLoss().to(device)

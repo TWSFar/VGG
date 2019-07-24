@@ -8,13 +8,13 @@ def res_per_class(stats, total, num_class):
     for i in range(num_class):
         cur_class = (stats[:, 1] == i)
         num = cur_class.sum()
-        TP = (stats[cur_class, 0] == i).sum().astype(np.float)
+        TP = (stats[cur_class, 0] == i).sum()
         FN = (num - TP).astype(np.float)
-        FP = ((stats[:, 0] == i).sum() - TP).astype(np.float)
+        FP = ((stats[:, 0] == i).sum() - TP)
         
-        p[i] = TP / (TP + FP + 1e-16)
-        r[i] = TP / (TP + FN + 1e-16)
-        f1[i] = 2 * p[i] * r[i] / (p[i] + r[i] + 1e-16)
+        p[i] = 1.0 * TP / (TP + FP + 1e-16)
+        r[i] = 1.0 * TP / (TP + FN + 1e-16)
+        f1[i] = 2.0 * p[i] * r[i] / (p[i] + r[i] + 1e-16)
     return p, r, f1
 
 
