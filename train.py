@@ -1,10 +1,12 @@
+import multiprocessing
+multiprocessing.set_start_method('spawn', True)
 import argparse
 import visdom
 import time
 import random
 import os
 import os.path as osp
-import test
+import val
 
 from models import *
 from data import *
@@ -29,11 +31,11 @@ def train(
         mode='train'):
     
     # config parameter
-    device, gpu_num = torch_utils.select_device()
+    device, gpu_num = torch_utils.select_device(is_head=True)
     start_epoch = 0
     cutoff = 10 # freeze backbone endpoint
-    best = osp.join(opt.save_folder, 'best.pt')
-    latest = osp.join(opt.save_folder, 'latest.pt')
+    best = osp.join(opt.save_folder, opt.backbone + '_best.pt')
+    latest = osp.join(opt.save_folder, opt.backbone + '_latest.pt')
     best_loss = float('inf')
     train_best_loss = float('inf')
     used_mulgpu = False
@@ -42,7 +44,7 @@ def train(
     if opt.visdom:
         vis = visdom.Visdom()
         vis_legend = ['Loss', 'correct', 'F1']
-        epoch_plot = create_vis_plot(vis, 'Epoch', 'Loss', 'train loss', [vis_legend[0],])
+        # epoch_plot = create_vis_plot(vis, 'Epoch', 'Loss', 'train loss', [vis_legend[0],])
         batch_plot = create_vis_plot(vis, 'Batch', 'Loss', 'batch loss', [vis_legend[0],])
         test_plot = create_vis_plot(vis, 'Epoch', 'Loss', 'test loss', vis_legend)
 
@@ -57,30 +59,18 @@ def train(
                             collate_fn=dataset.collate_fn
                             )
 
-    # model and optimizer create , init, load checkpoint   
-    model = resnet101(opt.pretrained)
+    # model and optimizer create , init, load checkpoint
+    if opt.backbone == 'resnet':
+        model = resnet101(pretrained = opt.pretrained)
+    elif opt.backbone == 'vgg':
+        model = vgg16(pretrained = opt.pretrained) 
     optimizer = optim.SGD(model.parameters(), lr=hyp['lr0'], momentum=hyp['momentum'], weight_decay=hyp['weight_decay'])
-    model_changed = True
-    if opt.resume:
-        chkpt = torch.load(latest)
-        model_dict = model.state_dict()
-        pretrained_dict = chkpt['model']
-        if model_changed:
-            model.module_list.apply(weights_init)
-            new_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys()}
-            model_dict.update(new_dict)
-            model.load_state_dict(model_dict)
-        else:
-            model.load_state_dict(pretrained_dict)
-        best_loss = chkpt['best_loss']
-        start_epoch = chkpt['epoch'] + 1
-    # elif opt.pretrain:
-    #     model.load_state_dict(torch.load(opt.pretrain_weight)['model'])
-    # else:
-    #     model.module_list.apply(weights_init)
-    
     scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[round(opt.epochs * x) for x in (0.8, 0.9)], gamma=hyp['lr_gamma']) 
     scheduler.last_epoch = start_epoch - 1
+    
+    # resume
+    if opt.resume:
+        model, best_loss, start_epoch, optimizer = resume_load_weights(model, optimizer, latest)
 
     # gpu set
     if opt.gpu > 1 and gpu_num > 1:
@@ -102,7 +92,6 @@ def train(
     batch_number = len(dataloader)
     n_burnin = min(round(batch_number / 5 + 1), 1000)  # burn-in batches
     total_time = time.time()
-    
     for epoch in range(start_epoch, opt.epochs):
         print(('%10s' * 4) % ('Epoch', 'Batch', 'Loss', 'Time'))
         model.train()
@@ -152,7 +141,7 @@ def train(
             end_time = time.time()
 
             if opt.visdom:
-                update_vis_plot(vis, i, [loss.cpu()], batch_plot, 'append')
+                update_vis_plot(vis, batch_number*epoch+i, [loss.cpu()], batch_plot, 'append')
             
             summary = ('%8s%12s'+'%10.3g'*2) % (
                         '%g/%g' % (epoch, opt.epochs), 
@@ -164,9 +153,11 @@ def train(
         
         if not opt.notest or epoch == opt.epochs - 1:
             with torch.no_grad():
-                result = test.test(opt=opt, model=model, mode='test') # P, R, F1, test_loss
+                result = val.val(opt=opt, model=model, mode='test') # P, R, F1, test_loss
         
-        with open('result.txt', 'a') as file:
+        if not osp.exists('result_log'):
+            os.makedirs('result_log')
+        with open(osp.join('result_log', opt.backbone + 'result.txt'), 'a') as file:
             file.write(summary + '%10.3g' * 3 % result + '\n') 
 
         test_loss = result[1]
@@ -175,7 +166,7 @@ def train(
         
         # visdom
         if opt.visdom:
-            update_vis_plot(vis, epoch, [train_best_loss], epoch_plot, 'append')
+            # update_vis_plot(vis, epoch, [train_best_loss], epoch_plot, 'append')
             update_vis_plot(vis, epoch, result, test_plot, 'append')
         
         save = (not opt.nosave) or (epoch == opt.epochs-1)
@@ -188,15 +179,14 @@ def train(
                 'optimizer': optimizer.state_dict()
             }
             if not osp.exists(opt.save_folder):
-                    os.makedirs(opt.save_folder)
+                os.makedirs(opt.save_folder)
             torch.save(chkpt, latest)
             if best_loss == test_loss:
-                
                 torch.save(chkpt, best)
             
             backup = False
-            if backup and epoch > 0 and epoch % 10 ==0:
-                torch.save(chkpt, osp(opt.save_folder, 'backuo%g.pt' % epoch))
+            if backup and epoch > 20 and epoch % 10 ==0:
+                torch.save(chkpt, osp(opt.save_folder, opt.backbone + 'backup_%g.pt' % epoch))
             # Delete checkpoint   
             del chkpt
 
@@ -206,8 +196,10 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='VGG training with Pytorch')
+    parser.add_argument('--backbone', type=str, default='vgg', 
+                        choices=['resnet', 'vgg'], help='backbone')
     parser.add_argument('--epochs', type=int, default=200, help='number of epochs')
-    parser.add_argument('--batch-size', type=int, default=128, help='batch size')
+    parser.add_argument('--batch-size', type=int, default=16, help='batch size')
     parser.add_argument('--cfg', type=str, default='cfg/vgg16.cfg', help='cfg file path')
     parser.add_argument('--single-scale', action='store_true', help='train at fixed size')
     parser.add_argument('--img-size', type=int, default=224, help='inference size')
@@ -217,12 +209,11 @@ if __name__ == "__main__":
     parser.add_argument('--evolve', action='store_true', help='run hyperparameter evolution')
     parser.add_argument('--number-classes', type=int, default=2, help='number of classes')
     parser.add_argument('--trainset_path', type=str, default='datasets/DogCat/train', help='train dataset path')
-    parser.add_argument('--testset_path', type=str, default='datasets/DogCat/test', help='test dataset path')
+    parser.add_argument('--valset_path', type=str, default='datasets/DogCat/val', help='val dataset path')
     parser.add_argument('--save-folder', type=str, default='weights', help='Directory for saving checkpoint models')
     parser.add_argument('--accumulate', type=int, default=1, help='number of batches to accumulate before optimizing')
     parser.add_argument('--visdom', default=True, type=bool, help='Use visdom for loss visualization')
     parser.add_argument('--num-workers', type=int, default=4, help='number of Pytorch DataLoader workers')
-    parser.add_argument('--pretrain-weight', type=str, default='weights/vgg16.pt', help='pre train weights')
     parser.add_argument('--pretrained', default=True, type=bool, help='use pre train')
     parser.add_argument('--gpu', default=4, type=int, help='number of gpu')
     opt=parser.parse_args()
@@ -231,6 +222,9 @@ if __name__ == "__main__":
         print(key, '=', value)
     print('')
 
+    if opt.resume:
+        opt.pretrained = False
+    
     with open('result.txt', 'a') as file:
             file.write(('\n%8s%12s'+'%11s'*2 + '%10s' * 3 + '\n') % ('epoch', 'batch_i', 'train_loss', 'time', 'correct', 'test_loss', 'f1'))
     train()

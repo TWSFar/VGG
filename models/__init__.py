@@ -1,3 +1,3 @@
 from .parse_config import *
-from .VGG import *
+from .vgg import *
 from .resnet import resnet101

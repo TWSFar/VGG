@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 
 
-def test(
+def val(
     opt,
     img_size = 224,
     model=None,
@@ -18,16 +18,18 @@ def test(
     
     # Configure
     device, gpu_num = torch_utils.select_device()
-    best = osp.join(opt.save_folder, 'best.pt')
-    latest = osp.join(opt.save_folder, 'latest.pt')
+    best = osp.join(opt.save_folder, opt.backbone + '_best.pt')
+    latest = osp.join(opt.save_folder, opt.backbone + '_latest.pt')
     used_gpu = False
 
-    '''
+ 
     # model
     if model is None:
-        temp = 'weights/vgg16.pt'
-        model = VGG(opt.cfg, img_size)
-        chkpt = torch.load(temp)
+        if opt.backbone == 'resnet':
+            model = resnet101(pretrained = opt.pretrained)
+        elif opt.backbone == 'vgg':
+            model = vgg16(pretrained = opt.pretrained) 
+        chkpt = torch.load(best)
         model_dict = model.state_dict()
         pretrained_dict = chkpt['model']
         # new_dict = {}
@@ -49,14 +51,12 @@ def test(
             used_gpu = True
         else:
             model.to(device)
-    '''
     
     # Loss
     criterion = nn.CrossEntropyLoss().to(device)
     
     # dataset
-    dataset = DogCat(opt.testset_path, img_size, mode)\
-    
+    dataset = DogCat(opt.valset_path, img_size, mode)
     dataloader = DataLoader(dataset,
                             batch_size=opt.batch_size,
                             num_workers=4,
@@ -100,7 +100,7 @@ def test(
         mp, mr, mf1 = p.mean(), r.mean(), f1.mean()    
     
     print(('%10s' * 6) % ('Class_num', 'Labels', 'P', 'R', 'F1', 'loss'))
-    print(("%10d"+"%10.3g"*5) % (opt.number_classes, total, corrects, mr, mf1, loss))
+    print(("%10d%10d"+"%10.3g"*4) % (opt.number_classes, total, mp, mr, mf1, loss))
 
     if opt.number_classes > 1 and len(stats):
         for i, c in enumerate(classes):
@@ -112,6 +112,8 @@ def test(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='test.py')
+    parser.add_argument('--backbone', type=str, default='vgg', 
+                        choices=['resnet', 'vgg'], help='backbone')
     parser.add_argument('--cfg', type=str, default='cfg/vgg16.cfg', help='cfg file path')
     parser.add_argument('--batch-size', type=int, default=128, help='batch size')
     parser.add_argument('--img-size', type=int, default=224, help='inference size (pixels)')

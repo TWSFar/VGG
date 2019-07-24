@@ -29,8 +29,14 @@ class DogCat(data.Dataset):
         img = img[:, :, ::-1].transpose(2, 0, 1) # BGR to RGB
         img = np.ascontiguousarray(img, dtype=np.float32)
         img = normalize(img)
-        img = torch.from_numpy(img).float() 
-        label = np.array(1 if 'dog' in img_path.split('/')[-1] else 0)
+        img = torch.from_numpy(img).float()
+        if 'dog' in img_path.split('/')[-1]:
+            label = np.array(0)
+        elif 'cat' in img_path.split('/')[-1]:
+            label = np.array(1)
+        else:
+            raise NameError
+        # label = np.array(1 if 'dog' in img_path.split('/')[-1] else 0)
 
         label_out = torch.zeros((1, 2))
         label_out[0, 1] = torch.from_numpy(label)
