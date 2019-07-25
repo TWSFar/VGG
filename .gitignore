@@ -3,6 +3,7 @@ __pycache__/
 .vscode/
 *.py[cod]
 *$py.class
+*pyc
 
 # weights of saved
 weights/
@@ -12,5 +13,8 @@ datasets/
 
 # debug.py
 debug.py
+
+# result log
+result_log/
 
 
