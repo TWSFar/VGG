@@ -6,10 +6,10 @@ Logo          : True
 
 # resnet 
    epoch: 20
-[result]:https://github.com/TWSFar/VGG_and-RESNet101/blob/master/result_log/image_result/resnet.png
+![result](https://github.com/TWSFar/VGG_and-RESNet101/blob/master/result_log/image_result/resnet.png)
 
 # vgg
   epoch: 50
-[result]:https://github.com/TWSFar/VGG_and-RESNet101/blob/master/result_log/image_result/vgg.png
+![result](https://github.com/TWSFar/VGG_and-RESNet101/blob/master/result_log/image_result/vgg.png)
 
 
