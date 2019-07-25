@@ -1,2 +1,3 @@
-# VGG
-复现VGG和ResNet训练经典数据集DogCat
+搭建VGG 和 RESNet 训练DogCat
+
+
